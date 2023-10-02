@@ -53,7 +53,8 @@ VescToOdom::VescToOdom(const rclcpp::NodeOptions & options)
   publish_tf_(false),
   x_(0.0),
   y_(0.0),
-  yaw_(0.0)
+  yaw_(0.0),
+  imu_start_yaw_(0.0)
 {
   // get ROS parameters
   odom_frame_ = declare_parameter("odom_frame", odom_frame_);
@@ -85,6 +86,9 @@ VescToOdom::VescToOdom(const rclcpp::NodeOptions & options)
   vesc_state_sub_ = create_subscription<VescStateStamped>(
     "sensors/core", 10, std::bind(&VescToOdom::vescStateCallback, this, _1));
 
+  imu_sub_ = create_subscription<sensor_msgs::msg::Imu>(
+    "imu", 10, std::bind(&VescToOdom::imuCallback, this, _1));
+
   if (use_servo_cmd_) {
     servo_sub_ = create_subscription<Float64>(
       "sensors/servo_position_command", 10, std::bind(&VescToOdom::servoCmdCallback, this, _1));
@@ -105,6 +109,8 @@ void VescToOdom::vescStateCallback(const VescStateStamped::SharedPtr state)
   }
   double current_steering_angle(0.0), current_angular_velocity(0.0);
   if (use_servo_cmd_) {
+    // print last_servo_cmd_->data 
+    std::cout << "last_servo_cmd_->data: " << last_servo_cmd_->data << std::endl;
     current_steering_angle =
       (last_servo_cmd_->data - steering_to_servo_offset_) / steering_to_servo_gain_;
     current_angular_velocity = current_speed * tan(current_steering_angle) / wheelbase_;
@@ -125,9 +131,9 @@ void VescToOdom::vescStateCallback(const VescStateStamped::SharedPtr state)
   double y_dot = current_speed * sin(yaw_);
   x_ += x_dot * dt.seconds();
   y_ += y_dot * dt.seconds();
-  if (use_servo_cmd_) {
-    yaw_ += current_angular_velocity * dt.seconds();
-  }
+  // if (use_servo_cmd_) {
+  //   yaw_ += current_angular_velocity * dt.seconds();
+  // }
 
   // save state for next time
   last_state_ = state;
@@ -148,9 +154,9 @@ void VescToOdom::vescStateCallback(const VescStateStamped::SharedPtr state)
 
   // Position uncertainty
   /** @todo Think about position uncertainty, perhaps get from parameters? */
-  odom.pose.covariance[0] = 0.2;   ///< x
-  odom.pose.covariance[7] = 0.2;   ///< y
-  odom.pose.covariance[35] = 0.4;  ///< yaw
+  odom.pose.covariance[0] = 0.1;   ///< x
+  odom.pose.covariance[7] = 0.1;   ///< y
+  odom.pose.covariance[35] = 0.1;  ///< yaw
 
   // Velocity ("in the coordinate frame given by the child_frame_id")
   odom.twist.twist.linear.x = current_speed;
@@ -183,6 +189,28 @@ void VescToOdom::vescStateCallback(const VescStateStamped::SharedPtr state)
 void VescToOdom::servoCmdCallback(const Float64::SharedPtr servo)
 {
   last_servo_cmd_ = servo;
+}
+
+void VescToOdom::imuCallback(const sensor_msgs::msg::Imu::SharedPtr imu)
+{
+  // convert quaternion to yaw
+  tf2::Quaternion q(
+    imu->orientation.x, imu->orientation.y, imu->orientation.z, imu->orientation.w);
+  tf2::Matrix3x3 m(q);
+  double roll, pitch, yaw;
+  m.getRPY(roll, pitch, yaw);
+
+  // save yaw for vesc state callback
+  yaw_ = yaw - imu_start_yaw_;
+
+  if (imu_start_yaw_ == 0.0) {
+    imu_start_yaw_ = yaw;
+  }
+
+  // log yaw to console
+  // RCLCPP_INFO(this->get_logger(), "yaw: %f", yaw);
+
+
 }
 
 }  // namespace vesc_ackermann
