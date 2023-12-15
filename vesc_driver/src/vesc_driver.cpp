@@ -78,14 +78,14 @@ VescDriver::VescDriver(const rclcpp::NodeOptions & options)
   }
 
   // create vesc state (telemetry) publisher
-  state_pub_ = create_publisher<VescStateStamped>("sensors/core", rclcpp::QoS{10});
-  imu_pub_ = create_publisher<VescImuStamped>("sensors/imu", rclcpp::QoS{10});
-  imu_std_pub_ = create_publisher<Imu>("sensors/imu/raw", rclcpp::QoS{10});
+  state_pub_ = create_publisher<VescStateStamped>("vesc/core", rclcpp::QoS{10});
+  imu_pub_ = create_publisher<VescImuStamped>("vesc/imu", rclcpp::QoS{10});
+  imu_std_pub_ = create_publisher<Imu>("vesc/imu/raw", rclcpp::QoS{10});
 
   // since vesc state does not include the servo position, publish the commanded
   // servo position as a "sensor"
   servo_sensor_pub_ = create_publisher<Float64>(
-    "sensors/servo_position_command", rclcpp::QoS{10});
+    "vesc/servo_position_command", rclcpp::QoS{10});
 
   // subscribe to motor and servo command topics
   duty_cycle_sub_ = create_subscription<Float64>(
@@ -104,7 +104,7 @@ VescDriver::VescDriver(const rclcpp::NodeOptions & options)
     "commands/servo/position", rclcpp::QoS{10}, std::bind(&VescDriver::servoCallback, this, _1));
 
   // create a 50Hz timer, used for state machine & polling VESC telemetry
-  timer_ = create_wall_timer(20ms, std::bind(&VescDriver::timerCallback, this));
+  timer_ = create_wall_timer(10ms, std::bind(&VescDriver::timerCallback, this));
 }
 
 /* TODO or TO-THINKABOUT LIST
