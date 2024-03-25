@@ -82,6 +82,11 @@ VescDriver::VescDriver(const rclcpp::NodeOptions & options)
   imu_pub_ = create_publisher<VescImuStamped>("vesc/imu", rclcpp::QoS{10});
   imu_std_pub_ = create_publisher<Imu>("vesc/imu/raw", rclcpp::QoS{10});
 
+  // initialize servo state
+  forget_factor_ = 0.01;
+  servo_position_ = 0.0;
+  servo_position_filtered_ = 0.0;
+
   // since vesc state does not include the servo position, publish the commanded
   // servo position as a "sensor"
   servo_sensor_pub_ = create_publisher<Float64>(
@@ -187,6 +192,11 @@ void VescDriver::vescPacketCallback(const std::shared_ptr<VescPacket const> & pa
     state_msg.state.ntc_temp_mos3 = values->temp_mos3();
     state_msg.state.avg_vd = values->avg_vd();
     state_msg.state.avg_vq = values->avg_vq();
+
+    servo_position_filtered_ = (1.0 - forget_factor_) * servo_position_filtered_ +
+      forget_factor_ * servo_position_;
+    state_msg.state.servo_pose = servo_position_;
+    state_msg.state.servo_pose_filtered = servo_position_filtered_;
 
     state_pub_->publish(state_msg);
   } else if (packet->name() == "FWVersion") {
@@ -335,6 +345,7 @@ void VescDriver::servoCallback(const Float64::SharedPtr servo)
     vesc_.setServo(servo_clipped);
     // publish clipped servo value as a "sensor"
     auto servo_sensor_msg = Float64();
+    servo_position_ = servo_clipped;
     servo_sensor_msg.data = servo_clipped;
     servo_sensor_pub_->publish(servo_sensor_msg);
   }

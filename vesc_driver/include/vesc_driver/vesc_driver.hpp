@@ -118,6 +118,11 @@ private:
   int fw_version_major_;                ///< firmware major version reported by vesc
   int fw_version_minor_;                ///< firmware minor version reported by vesc
 
+  // Servo sensor
+  double servo_position_;
+  double servo_position_filtered_;
+  double forget_factor_;
+
   // ROS callbacks
   void brakeCallback(const Float64::SharedPtr brake);
   void currentCallback(const Float64::SharedPtr current);
