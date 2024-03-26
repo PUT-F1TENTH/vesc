@@ -1,6 +1,7 @@
 /**:
   ros__parameters:
     port: "/dev/ttyACM0"
+    tire: "hoons"  # hoons or xray
     brake_max: 200000.0
     brake_min: -20000.0
     current_max: 120.0

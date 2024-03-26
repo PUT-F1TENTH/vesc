@@ -67,6 +67,20 @@ VescDriver::VescDriver(const rclcpp::NodeOptions & options)
 {
   // get vesc serial port address
   std::string port = declare_parameter<std::string>("port", "");
+  std::string tire = declare_parameter<std::string>("tire", "");
+
+  if(tire == "hoons"){
+
+    rpm_devisor_ = 3940 * (104.11 + 0.4) / 100.81;
+
+  } else if (tire == "xray") {
+
+    rpm_devisor_ = 3940;
+
+  } else {
+    rpm_devisor_ = 3940;
+  }
+     
 
   // attempt to connect to the serial port
   try {
@@ -83,7 +97,7 @@ VescDriver::VescDriver(const rclcpp::NodeOptions & options)
   imu_std_pub_ = create_publisher<Imu>("vesc/imu/raw", rclcpp::QoS{10});
 
   // initialize servo state
-  forget_factor_ = 0.01;
+  forget_factor_ = 0.13;
   servo_position_ = 0.0;
   servo_position_filtered_ = 0.0;
 
@@ -174,7 +188,7 @@ void VescDriver::vescPacketCallback(const std::shared_ptr<VescPacket const> & pa
     state_msg.state.avg_id = values->avg_id();
     state_msg.state.avg_iq = values->avg_iq();
     state_msg.state.duty_cycle = values->duty_cycle_now();
-    state_msg.state.speed = values->rpm();
+    state_msg.state.speed = values->rpm() / rpm_devisor_;
 
     state_msg.state.charge_drawn = values->amp_hours();
     state_msg.state.charge_regen = values->amp_hours_charged();
@@ -345,7 +359,7 @@ void VescDriver::servoCallback(const Float64::SharedPtr servo)
     vesc_.setServo(servo_clipped);
     // publish clipped servo value as a "sensor"
     auto servo_sensor_msg = Float64();
-    servo_position_ = servo_clipped;
+    servo_position_ = (servo_clipped - 0.5) * 0.531 / 0.35;
     servo_sensor_msg.data = servo_clipped;
     servo_sensor_pub_->publish(servo_sensor_msg);
   }

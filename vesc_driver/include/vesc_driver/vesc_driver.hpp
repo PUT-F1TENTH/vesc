@@ -123,6 +123,8 @@ private:
   double servo_position_filtered_;
   double forget_factor_;
 
+  double rpm_devisor_;
+
   // ROS callbacks
   void brakeCallback(const Float64::SharedPtr brake);
   void currentCallback(const Float64::SharedPtr current);
