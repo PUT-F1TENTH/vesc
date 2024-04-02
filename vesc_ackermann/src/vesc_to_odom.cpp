@@ -84,7 +84,7 @@ VescToOdom::VescToOdom(const rclcpp::NodeOptions & options)
 
   // subscribe to vesc state and. optionally, servo command
   vesc_state_sub_ = create_subscription<VescStateStamped>(
-    "sensors/core", 10, std::bind(&VescToOdom::vescStateCallback, this, _1));
+    "vesc/core", 10, std::bind(&VescToOdom::vescStateCallback, this, _1));
 
   imu_sub_ = create_subscription<sensor_msgs::msg::Imu>(
     "imu", 10, std::bind(&VescToOdom::imuCallback, this, _1));
