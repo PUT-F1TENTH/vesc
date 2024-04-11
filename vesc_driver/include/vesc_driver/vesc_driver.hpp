@@ -35,13 +35,14 @@
 #include <memory>
 #include <string>
 
+#include <control_interfaces/msg/control.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/imu.hpp>
 #include <std_msgs/msg/float64.hpp>
-#include <vesc_msgs/msg/vesc_state.hpp>
-#include <vesc_msgs/msg/vesc_state_stamped.hpp>
 #include <vesc_msgs/msg/vesc_imu.hpp>
 #include <vesc_msgs/msg/vesc_imu_stamped.hpp>
+#include <vesc_msgs/msg/vesc_state.hpp>
+#include <vesc_msgs/msg/vesc_state_stamped.hpp>
 
 #include "vesc_driver/vesc_interface.hpp"
 #include "vesc_driver/vesc_packet.hpp"
@@ -49,92 +50,98 @@
 namespace vesc_driver
 {
 
-using std_msgs::msg::Float64;
-using vesc_msgs::msg::VescState;
-using vesc_msgs::msg::VescStateStamped;
-using vesc_msgs::msg::VescImuStamped;
-using sensor_msgs::msg::Imu;
+  using sensor_msgs::msg::Imu;
+  using std_msgs::msg::Float64;
+  using vesc_msgs::msg::VescImuStamped;
+  using vesc_msgs::msg::VescState;
+  using vesc_msgs::msg::VescStateStamped;
 
-class VescDriver
-  : public rclcpp::Node
-{
-public:
-  explicit VescDriver(const rclcpp::NodeOptions & options);
-
-private:
-  // interface to the VESC
-  VescInterface vesc_;
-  void vescPacketCallback(const std::shared_ptr<VescPacket const> & packet);
-  void vescErrorCallback(const std::string & error);
-
-  // limits on VESC commands
-  struct CommandLimit
+  class VescDriver
+      : public rclcpp::Node
   {
-    CommandLimit(
-      rclcpp::Node * node_ptr,
-      const std::string & str,
-      const std::experimental::optional<double> & min_lower = std::experimental::optional<double>(),
-      const std::experimental::optional<double> & max_upper =
-      std::experimental::optional<double>());
-    double clip(double value);
-    rclcpp::Node * node_ptr;
-    rclcpp::Logger logger;
-    std::string name;
-    std::experimental::optional<double> lower;
-    std::experimental::optional<double> upper;
+  public:
+    explicit VescDriver(const rclcpp::NodeOptions &options);
+
+  private:
+    // interface to the VESC
+    VescInterface vesc_;
+    void vescPacketCallback(const std::shared_ptr<VescPacket const> &packet);
+    void vescErrorCallback(const std::string &error);
+
+    // limits on VESC commands
+    struct CommandLimit
+    {
+      CommandLimit(
+          rclcpp::Node *node_ptr,
+          const std::string &str,
+          const std::experimental::optional<double> &min_lower = std::experimental::optional<double>(),
+          const std::experimental::optional<double> &max_upper =
+              std::experimental::optional<double>());
+      double clip(double value);
+      rclcpp::Node *node_ptr;
+      rclcpp::Logger logger;
+      std::string name;
+      std::experimental::optional<double> lower;
+      std::experimental::optional<double> upper;
+    };
+
+    CommandLimit duty_cycle_limit_;
+    CommandLimit current_limit_;
+    CommandLimit brake_limit_;
+    CommandLimit speed_limit_;
+    CommandLimit position_limit_;
+    CommandLimit servo_limit_;
+
+    // ROS services
+    rclcpp::Publisher<VescStateStamped>::SharedPtr state_pub_;
+    rclcpp::Publisher<VescImuStamped>::SharedPtr imu_pub_;
+    rclcpp::Publisher<Imu>::SharedPtr imu_std_pub_;
+
+    rclcpp::Publisher<Float64>::SharedPtr servo_sensor_pub_;
+    rclcpp::SubscriptionBase::SharedPtr duty_cycle_sub_;
+    rclcpp::SubscriptionBase::SharedPtr current_sub_;
+    rclcpp::SubscriptionBase::SharedPtr brake_sub_;
+    rclcpp::SubscriptionBase::SharedPtr speed_sub_;
+    rclcpp::SubscriptionBase::SharedPtr position_sub_;
+    rclcpp::SubscriptionBase::SharedPtr servo_sub_;
+
+    // new ctr interface
+    rclcpp::SubscriptionBase::SharedPtr ctr_sub_;
+
+    rclcpp::TimerBase::SharedPtr timer_;
+
+    // driver modes (possible states)
+    typedef enum
+    {
+      MODE_INITIALIZING,
+      MODE_OPERATING
+    } driver_mode_t;
+
+    // other variables
+    driver_mode_t driver_mode_; ///< driver state machine mode (state)
+    int fw_version_major_;      ///< firmware major version reported by vesc
+    int fw_version_minor_;      ///< firmware minor version reported by vesc
+
+    // Servo sensor
+    double servo_position_;
+    double servo_position_filtered_;
+    double forget_factor_;
+
+    double rpm_devisor_;
+
+    // ROS callbacks
+    void brakeCallback(const Float64::SharedPtr brake);
+    void currentCallback(const Float64::SharedPtr current);
+    void dutyCycleCallback(const Float64::SharedPtr duty_cycle);
+    void positionCallback(const Float64::SharedPtr position);
+    void servoCallback(const Float64::SharedPtr servo);
+    void speedCallback(const Float64::SharedPtr speed);
+
+    void ctrCallback(const control_interfaces::msg::Control::SharedPtr msg);
+
+    void timerCallback();
   };
 
-  CommandLimit duty_cycle_limit_;
-  CommandLimit current_limit_;
-  CommandLimit brake_limit_;
-  CommandLimit speed_limit_;
-  CommandLimit position_limit_;
-  CommandLimit servo_limit_;
+} // namespace vesc_driver
 
-  // ROS services
-  rclcpp::Publisher<VescStateStamped>::SharedPtr state_pub_;
-  rclcpp::Publisher<VescImuStamped>::SharedPtr imu_pub_;
-  rclcpp::Publisher<Imu>::SharedPtr imu_std_pub_;
-
-  rclcpp::Publisher<Float64>::SharedPtr servo_sensor_pub_;
-  rclcpp::SubscriptionBase::SharedPtr duty_cycle_sub_;
-  rclcpp::SubscriptionBase::SharedPtr current_sub_;
-  rclcpp::SubscriptionBase::SharedPtr brake_sub_;
-  rclcpp::SubscriptionBase::SharedPtr speed_sub_;
-  rclcpp::SubscriptionBase::SharedPtr position_sub_;
-  rclcpp::SubscriptionBase::SharedPtr servo_sub_;
-  rclcpp::TimerBase::SharedPtr timer_;
-
-  // driver modes (possible states)
-  typedef enum
-  {
-    MODE_INITIALIZING,
-    MODE_OPERATING
-  }
-  driver_mode_t;
-
-  // other variables
-  driver_mode_t driver_mode_;           ///< driver state machine mode (state)
-  int fw_version_major_;                ///< firmware major version reported by vesc
-  int fw_version_minor_;                ///< firmware minor version reported by vesc
-
-  // Servo sensor
-  double servo_position_;
-  double servo_position_filtered_;
-  double forget_factor_;
-
-  double rpm_devisor_;
-
-  // ROS callbacks
-  void brakeCallback(const Float64::SharedPtr brake);
-  void currentCallback(const Float64::SharedPtr current);
-  void dutyCycleCallback(const Float64::SharedPtr duty_cycle);
-  void positionCallback(const Float64::SharedPtr position);
-  void servoCallback(const Float64::SharedPtr servo);
-  void speedCallback(const Float64::SharedPtr speed);
-  void timerCallback();
-};
-
-}  // namespace vesc_driver
-
-#endif  // VESC_DRIVER__VESC_DRIVER_HPP_
+#endif // VESC_DRIVER__VESC_DRIVER_HPP_
