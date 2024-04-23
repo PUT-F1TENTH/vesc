@@ -47,6 +47,8 @@
 #include "vesc_driver/vesc_interface.hpp"
 #include "vesc_driver/vesc_packet.hpp"
 
+#include "etl/circular_buffer.h"
+
 namespace vesc_driver
 {
 
@@ -125,6 +127,8 @@ namespace vesc_driver
     // Servo sensor
     double servo_position_;
     double servo_position_filtered_;
+    etl::circular_buffer<float, 5> steering_delay_;
+
     double forget_factor_;
 
     double rpm_devisor_;

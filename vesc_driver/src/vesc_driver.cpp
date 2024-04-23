@@ -222,8 +222,13 @@ namespace vesc_driver
       state_msg.state.avg_vd = values->avg_vd();
       state_msg.state.avg_vq = values->avg_vq();
 
+      float delayed_steering_ = steering_delay_.front();
+
+      steering_delay_.push(servo_position_);
+
       servo_position_filtered_ = (1.0 - forget_factor_) * servo_position_filtered_ +
-                                 forget_factor_ * servo_position_;
+                                 forget_factor_ * delayed_steering_;
+
       state_msg.state.servo_pose = servo_position_;
       state_msg.state.servo_pose_filtered = servo_position_filtered_;
 
@@ -409,8 +414,6 @@ namespace vesc_driver
         vesc_.setSpeed(speed_limit_.clip(msg->set_speed * rpm_devisor_));
       }
     }
-
-    return;
   }
 
   VescDriver::CommandLimit::CommandLimit(
