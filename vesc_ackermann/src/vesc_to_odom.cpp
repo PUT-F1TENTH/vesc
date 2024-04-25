@@ -84,14 +84,14 @@ VescToOdom::VescToOdom(const rclcpp::NodeOptions & options)
 
   // subscribe to vesc state and. optionally, servo command
   vesc_state_sub_ = create_subscription<VescStateStamped>(
-    "vesc/core", 10, std::bind(&VescToOdom::vescStateCallback, this, _1));
+    "vesc/core", rclcpp::SensorDataQoS(), std::bind(&VescToOdom::vescStateCallback, this, _1));
 
   imu_sub_ = create_subscription<sensor_msgs::msg::Imu>(
-    "imu", 10, std::bind(&VescToOdom::imuCallback, this, _1));
+    "imu", rclcpp::SensorDataQoS(), std::bind(&VescToOdom::imuCallback, this, _1));
 
   if (use_servo_cmd_) {
     servo_sub_ = create_subscription<Float64>(
-      "sensors/servo_position_command", 10, std::bind(&VescToOdom::servoCmdCallback, this, _1));
+      "sensors/servo_position_command", rclcpp::SensorDataQoS(), std::bind(&VescToOdom::servoCmdCallback, this, _1));
   }
 }
 
@@ -109,7 +109,7 @@ void VescToOdom::vescStateCallback(const VescStateStamped::SharedPtr state)
   }
   double current_steering_angle(0.0), current_angular_velocity(0.0);
   if (use_servo_cmd_) {
-    // print last_servo_cmd_->data 
+    // print last_servo_cmd_->data
     std::cout << "last_servo_cmd_->data: " << last_servo_cmd_->data << std::endl;
     current_steering_angle =
       (last_servo_cmd_->data - steering_to_servo_offset_) / steering_to_servo_gain_;
