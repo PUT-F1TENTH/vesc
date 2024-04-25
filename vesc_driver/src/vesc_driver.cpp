@@ -151,7 +151,6 @@ void VescDriver::timerCallback()
     rclcpp::shutdown();
     return;
   }
-
   /*
    * Driver state machine, modes:
    *  INITIALIZING - request and wait for vesc version

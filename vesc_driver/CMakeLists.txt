@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.8)
 project(vesc_driver)
 
 # Set minimum C++ standard to C++14
@@ -19,6 +19,16 @@ find_package(Threads)
 ## Build ##
 ###########
 
+Include(FetchContent)
+
+FetchContent_Declare(
+  etl
+  GIT_REPOSITORY https://github.com/ETLCPP/etl
+  GIT_TAG        20.38.1
+)
+FetchContent_MakeAvailable(etl)
+
+
 # node library
 ament_auto_add_library(${PROJECT_NAME} SHARED
   src/vesc_driver.cpp
@@ -28,7 +38,9 @@ ament_auto_add_library(${PROJECT_NAME} SHARED
 )
 target_link_libraries(${PROJECT_NAME}
   ${CMAKE_THREAD_LIBS_INIT}
+  etl::etl
 )
+
 rclcpp_components_register_node(${PROJECT_NAME}
   PLUGIN vesc_driver::VescDriver
   EXECUTABLE ${PROJECT_NAME}_node
