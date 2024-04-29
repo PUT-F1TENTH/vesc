@@ -96,6 +96,9 @@ VescDriver::VescDriver(const rclcpp::NodeOptions & options)
   forget_factor_ = 0.13;
   servo_position_ = 0.0;
   servo_position_filtered_ = 0.0;
+  speed_ref_ = 0.0;
+  speed_ctrl_enabled_ = 0;
+
 
   // since vesc state does not include the servo position, publish the commanded
   // servo position as a "sensor"
@@ -214,6 +217,10 @@ void VescDriver::vescPacketCallback(const std::shared_ptr<VescPacket const> & pa
       forget_factor_ * servo_position_;
     state_msg.state.servo_pose = servo_position_;
     state_msg.state.servo_pose_filtered = servo_position_filtered_;
+
+    // Speed control
+    state_msg.state.speed_ref = speed_ref_;
+    state_msg.state.speed_ctrl_enabled = speed_ctrl_enabled_;
 
     state_pub_->publish(state_msg);
   } else if (packet->name() == "FWVersion") {
@@ -375,10 +382,14 @@ void VescDriver::ctrCallback(const control_interfaces::msg::Control::SharedPtr m
 
     if (msg->control_mode == msg->CURRENT_MODE) {
       vesc_.setCurrent(current_limit_.clip(msg->set_current));
+      speed_ctrl_enabled_ = 0;
     } else if (msg->control_mode == msg->BRAKE_MODE) {
       vesc_.setBrake(brake_limit_.clip(msg->set_brake));
+      speed_ctrl_enabled_ = 0;
     } else if (msg->control_mode == msg->SPEED_MODE) {
       vesc_.setSpeed(speed_limit_.clip(msg->set_speed * rpm_devisor_));
+      speed_ref_ = msg->set_speed;
+      speed_ctrl_enabled_ = 1;
     }
   }
 

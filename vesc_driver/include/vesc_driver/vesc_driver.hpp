@@ -129,6 +129,10 @@ namespace vesc_driver
     double servo_position_filtered_;
     etl::circular_buffer<float, 5> steering_delay_;
 
+    // Speed control
+    double speed_ref_;
+    int speed_ctrl_enabled_;
+
     double forget_factor_;
 
     double rpm_devisor_;
