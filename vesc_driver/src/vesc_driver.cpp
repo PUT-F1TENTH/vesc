@@ -379,6 +379,7 @@ void VescDriver::ctrCallback(const control_interfaces::msg::Control::SharedPtr m
     double steering_angle = msg->steering_angle * 0.35 / 0.531 + 0.5;
     double servo_clipped(servo_limit_.clip(steering_angle));
     vesc_.setServo(servo_clipped);
+    servo_position_ = msg->steering_angle;
 
     if (msg->control_mode == msg->CURRENT_MODE) {
       vesc_.setCurrent(current_limit_.clip(msg->set_current));
